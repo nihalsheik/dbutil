@@ -14,7 +14,7 @@ List<Map<String, Object>> queryForMapList(String sql, Object... args)
 
 Map<String, Object> queryForMap(String sql, Object... args)
 
-public List<DataMap> queryForDataMapList(String sql, Object... args)
+List<DataMap> queryForDataMapList(String sql, Object... args)
 
 DataMap queryForDataMap(String sql, Object... args)
 
