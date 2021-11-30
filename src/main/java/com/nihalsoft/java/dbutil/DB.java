@@ -175,9 +175,5 @@ public class DB extends QueryRunner {
     }
 
     public static void main(String[] args) throws Exception {
-//        DB db = new DB();
-//        db.insert(new PublicResource());
-//        db.update(new PublicResource());
-//        db.delete(new PublicResource());
     }
 }
