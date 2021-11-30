@@ -1,5 +1,7 @@
 
 DB db = DbUtil.configure("jdbc:mysql://ip:port/db","user","pwd");
+
+
 Map<String, Object> result = db.queryForMap("select * from person");
 
 Options:
