@@ -29,16 +29,19 @@ public class DbUtil {
                     if (s.length == 2) {
                         dm.put(k.replace("db.", ""), prop.get(k));
                     }
+                } else {
+                    dm.put(k, prop.get(k));
                 }
             }
-        }
 
-        dm.forEach((k, v) -> System.out.println(" --> " + k + " = " + v));
+            dm.forEach((k, v) -> System.out.println(" --> " + k + " = " + v));
+        }
 
         Properties pp = new Properties();
         pp.put("user", user);
         pp.put("password", password);
         pp.put("driverClass", dm.get("driverClass"));
+
         DataSource ds = DataSources.unpooledDataSource(jdbcUrl, pp);
 
         PoolBackedDataSource ds2 = (PoolBackedDataSource) DataSources.pooledDataSource(ds, dm);

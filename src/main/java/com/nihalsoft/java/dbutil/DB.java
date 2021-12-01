@@ -9,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import javax.sql.DataSource;
 
@@ -19,6 +20,8 @@ import org.apache.commons.dbutils.handlers.ArrayHandler;
 import org.apache.commons.dbutils.handlers.ArrayListHandler;
 import org.apache.commons.dbutils.handlers.BeanHandler;
 import org.apache.commons.dbutils.handlers.BeanListHandler;
+import org.apache.commons.dbutils.handlers.MapHandler;
+import org.apache.commons.dbutils.handlers.MapListHandler;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
 
 import com.nihalsoft.java.dbutil.common.Column;
@@ -61,6 +64,14 @@ public class DB extends QueryRunner {
 
     public Object[] queryForObject(String sql, Object... args) throws Exception {
         return this.query(sql, new ArrayHandler(), args);
+    }
+
+    public List<Map<String, Object>> queryForMapList(String sql, Object... args) throws Exception {
+        return this.query(sql, new MapListHandler(), args);
+    }
+
+    public Map<String, Object> queryForMap(String sql, Object... args) throws Exception {
+        return this.query(sql, new MapHandler(), args);
     }
 
     public List<DataMap> queryForDataMapList(String sql, Object... args) throws Exception {
