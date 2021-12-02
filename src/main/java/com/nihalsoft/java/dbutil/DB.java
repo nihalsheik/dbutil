@@ -58,7 +58,7 @@ public class DB extends QueryRunner {
         return false;
     }
 
-    public List<Object[]> queryForObjectList(String sql, Object... args) throws Exception {
+    public List<Object[]> queryForList(String sql, Object... args) throws Exception {
         return this.query(sql, new ArrayListHandler(), args);
     }
 
@@ -157,6 +157,21 @@ public class DB extends QueryRunner {
             return this.update(sql, new ScalarHandler<Long>(), idValue);
         }
         return -1;
+    }
+
+    public long insert(DataMap dataMap, String tableName) throws Exception {
+
+        List<String> cols = new ArrayList<String>();
+        List<Object> values = new ArrayList<Object>();
+
+        dataMap.forEach((k, v) -> {
+            cols.add(k + "=?");
+            values.add(v);
+        });
+
+        String sql = "INSERT INTO " + tableName + " SET " + String.join(",", cols);
+        System.out.println(sql);
+        return this.insert(sql, new ScalarHandler<Long>(), values);
     }
 
     private List<ObjectInfo> getObjectInfo(Object object) throws Exception {

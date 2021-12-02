@@ -5,46 +5,42 @@ import java.util.Properties;
 
 import javax.sql.DataSource;
 
-import com.nihalsoft.java.dbutil.common.DataMap;
 import com.mchange.v2.c3p0.DataSources;
 import com.mchange.v2.c3p0.PoolBackedDataSource;
 
 public class DbUtil {
 
-    public static DB configure(String jdbcUrl, String user, String password) throws Exception {
-        return DbUtil.configure(jdbcUrl, user, password, null);
+    public static DB configure(Properties prop) throws Exception {
+        return DbUtil.configure(prop, "");
+
     }
 
-    public static DB configure(String jdbcUrl, String user, String password, Properties prop) throws Exception {
-
-        DataMap dm = new DataMap();
+    public static DB configure(Properties prop, String prefix) throws Exception {
 
         Enumeration<Object> keys = prop.keys();
 
-        if (prop != null) {
-            while (keys.hasMoreElements()) {
-                String k = keys.nextElement().toString();
-                if (k.startsWith("db.")) {
-                    String[] s = k.split("\\.");
-                    if (s.length == 2) {
-                        dm.put(k.replace("db.", ""), prop.get(k));
-                    }
-                } else {
-                    dm.put(k, prop.get(k));
-                }
-            }
+        Properties p2 = new Properties();
 
-            dm.forEach((k, v) -> System.out.println(" --> " + k + " = " + v));
+        while (keys.hasMoreElements()) {
+            String k = keys.nextElement().toString();
+            if (k.startsWith(prefix)) {
+                p2.put(k.replace(prefix, ""), prop.get(k).toString());
+            } else {
+                p2.put(k, prop.get(k).toString());
+            }
+        }
+        p2.forEach((k, v) -> System.out.println(" --> " + k + " = " + v));
+
+        Properties p1 = new Properties();
+        p1.put("user", p2.get("user"));
+        p1.put("password", p2.get("password"));
+        if (p2.containsKey("driverClass")) {
+            p1.put("driverClass", p2.get("driverClass"));
         }
 
-        Properties pp = new Properties();
-        pp.put("user", user);
-        pp.put("password", password);
-        pp.put("driverClass", dm.get("driverClass"));
+        DataSource ds = DataSources.unpooledDataSource(p2.get("jdbcUrl").toString(), p1);
 
-        DataSource ds = DataSources.unpooledDataSource(jdbcUrl, pp);
-
-        PoolBackedDataSource ds2 = (PoolBackedDataSource) DataSources.pooledDataSource(ds, dm);
+        PoolBackedDataSource ds2 = (PoolBackedDataSource) DataSources.pooledDataSource(ds, p2);
         DB db = new DB(ds2);
         db.execute("SELECT 1");
         return db;
