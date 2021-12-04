@@ -2,7 +2,6 @@ package com.nihalsoft.java.dbutil;
 
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
-import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -10,6 +9,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import javax.sql.DataSource;
 
@@ -24,9 +24,9 @@ import org.apache.commons.dbutils.handlers.MapHandler;
 import org.apache.commons.dbutils.handlers.MapListHandler;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
 
-import com.nihalsoft.java.dbutil.common.Column;
+import com.nihalsoft.java.dbutil.common.ColumnInfo;
+import com.nihalsoft.java.dbutil.common.ColumnType;
 import com.nihalsoft.java.dbutil.common.DataMap;
-import com.nihalsoft.java.dbutil.common.ObjectInfo;
 import com.nihalsoft.java.dbutil.common.Table;
 import com.nihalsoft.java.dbutil.result.BeanProcessorEx;
 import com.nihalsoft.java.dbutil.result.handler.DataMapHandler;
@@ -90,25 +90,41 @@ public class DB extends QueryRunner {
         return this.query(sql, new BeanListHandler<T>(type, basicRowProcessor), args);
     }
 
-    public long insert(Object object) throws Exception {
-        List<ObjectInfo> oiList = getObjectInfo(object);
+    /**
+     * 
+     * @param <T>
+     * @param object
+     * @return
+     * @throws Exception
+     */
+    public <T> T insert(Object object) throws Exception {
 
-        List<String> cols = new ArrayList<String>();
+        List<ColumnInfo> oiList = getObjectInfo(object);
+
+        String col = "";
         List<Object> values = new ArrayList<Object>();
 
-        oiList.stream().filter(oi -> !oi.getType().equalsIgnoreCase("id")).forEach(oi -> {
-            cols.add(oi.getName() + "=?");
-            values.add(oi.getValue());
-        });
+        for (ColumnInfo ci : oiList) {
+            if (ci.getType() != ColumnType.ID) {
+                col += "," + ci.getName() + "=?";
+                values.add(ci.getValue());
+            }
+        }
 
         Table tbl = object.getClass().getAnnotation(Table.class);
-        String sql = "INSERT INTO " + tbl.name() + " SET " + String.join(",", cols);
+        String sql = "INSERT INTO " + tbl.name() + " SET " + col.substring(1);
         System.out.println(sql);
-        return this.insert(sql, new ScalarHandler<Long>(), values);
+        return this.insert(sql, new ScalarHandler<T>(), values);
     }
 
-    public long update(Object object) throws Exception {
-        List<ObjectInfo> oiList = getObjectInfo(object);
+    /**
+     * 
+     * @param object
+     * @return
+     * @throws Exception
+     */
+    public int update(Object object) throws Exception {
+        List<ColumnInfo> oiList = getObjectInfo(object);
 
         List<String> cols = new ArrayList<String>();
         List<Object> values = new ArrayList<Object>();
@@ -116,13 +132,13 @@ public class DB extends QueryRunner {
         String idName = "";
         Object idValue = null;
 
-        for (ObjectInfo oi : oiList) {
-            if (oi.getType().equalsIgnoreCase("id")) {
-                idName = oi.getName();
-                idValue = oi.getValue();
+        for (ColumnInfo ci : oiList) {
+            if (ci.getType() == ColumnType.ID) {
+                idName = ci.getName();
+                idValue = ci.getValue();
             } else {
-                cols.add(oi.getName() + "=?");
-                values.add(oi.getValue());
+                cols.add(ci.getName() + "=?");
+                values.add(ci.getValue());
             }
         }
 
@@ -134,67 +150,104 @@ public class DB extends QueryRunner {
         Table tbl = object.getClass().getAnnotation(Table.class);
         String sql = "UPDATE " + tbl.name() + " SET " + String.join(",", cols) + " WHERE " + idName + "=?";
         System.out.println(sql);
-        return this.update(sql, new ScalarHandler<Long>(), values);
+        return this.update(sql, values.toArray());
     }
 
+    /**
+     * 
+     * @param object
+     * @return
+     * @throws Exception
+     */
     public int delete(Object object) throws Exception {
-        List<ObjectInfo> oiList = getObjectInfo(object);
+        List<ColumnInfo> oiList = getObjectInfo(object);
         String idName = "";
         Object idValue = null;
 
-        for (ObjectInfo oi : oiList) {
-            if (oi.getType().equalsIgnoreCase("id")) {
-                idName = oi.getName();
-                idValue = oi.getValue();
+        for (ColumnInfo ci : oiList) {
+            if (ci.getType() == ColumnType.ID) {
+                idName = ci.getName();
+                idValue = ci.getValue();
                 break;
             }
         }
 
         if (idValue != null) {
             Table tbl = object.getClass().getAnnotation(Table.class);
-            String sql = "DELETE " + tbl.name() + " WHERE " + idName + "=?";
+            String sql = "DELETE FROM " + tbl.name() + " WHERE " + idName + "=?";
             System.out.println(sql);
-            return this.update(sql, new ScalarHandler<Long>(), idValue);
+            return this.update(sql, idValue);
         }
         return -1;
     }
 
-    public long insert(DataMap dataMap, String tableName) throws Exception {
+    /**
+     * 
+     * @param <T>
+     * @param dataMap
+     * @param tableName
+     * @return
+     * @throws Exception
+     */
+    public <T> T insert(Map<String, Object> dataMap, String tableName) throws Exception {
 
-        List<String> cols = new ArrayList<String>();
-        List<Object> values = new ArrayList<Object>();
+        Object[] values = new Object[dataMap.size()];
 
-        dataMap.forEach((k, v) -> {
-            cols.add(k + "=?");
-            values.add(v);
-        });
+        String col = "";
+        int i = 0;
+        for (Entry<String, Object> entry : dataMap.entrySet()) {
+            col += "," + entry.getKey() + "=?";
+            values[i++] = entry.getValue();
+        }
 
-        String sql = "INSERT INTO " + tableName + " SET " + String.join(",", cols);
+        String sql = "INSERT INTO " + tableName + " SET " + col.substring(1);
         System.out.println(sql);
-        return this.insert(sql, new ScalarHandler<Long>(), values);
+        return this.insert(sql, new ScalarHandler<T>(), values);
     }
 
-    private List<ObjectInfo> getObjectInfo(Object object) throws Exception {
+    /**
+     * 
+     * @param dataMap
+     * @param tableName
+     * @param where
+     * @param params
+     * @return
+     * @throws Exception
+     */
+    public int update(Map<String, Object> dataMap, String tableName, String where, Object... params) throws Exception {
 
-        PropertyDescriptor[] ps = Introspector.getBeanInfo(object.getClass()).getPropertyDescriptors();
-        List<ObjectInfo> oiList = new ArrayList<ObjectInfo>();
+        Object[] values = new Object[dataMap.size() + params.length];
 
-        String type = "";
-        for (PropertyDescriptor property : ps) {
-            String colName = property.getName();
-            if (colName.equals("class")) {
-                continue;
+        String col = "";
+        int i = 0;
+        for (Entry<String, Object> entry : dataMap.entrySet()) {
+            col += "," + entry.getKey() + "=?";
+            values[i++] = entry.getValue();
+        }
+
+        for (Object obj : params) {
+            values[i++] = obj;
+        }
+
+        String sql = "UPDATE " + tableName + " SET " + col.substring(1) + " WHERE " + where;
+        System.out.println(sql);
+        return this.update(sql, values);
+    }
+
+    /**
+     * 
+     * @param object
+     * @return
+     * @throws Exception
+     */
+    private List<ColumnInfo> getObjectInfo(Object object) throws Exception {
+
+        List<ColumnInfo> oiList = new ArrayList<ColumnInfo>();
+
+        for (PropertyDescriptor property : Introspector.getBeanInfo(object.getClass()).getPropertyDescriptors()) {
+            if (!property.getName().equals("class")) {
+                oiList.add(new ColumnInfo(property, object));
             }
-
-            Method getter = property.getReadMethod();
-            Column e = getter.getAnnotation(Column.class);
-            if (e != null) {
-                if (!e.name().equals("")) {
-                    colName = e.name();
-                }
-                type = e.type();
-            }
-            oiList.add(new ObjectInfo(colName, getter.invoke(object), type, getter));
         }
 
         return oiList;

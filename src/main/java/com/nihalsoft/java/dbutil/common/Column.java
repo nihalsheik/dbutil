@@ -12,6 +12,6 @@ public @interface Column {
 
     String name() default "";
 
-    String type() default "";
+    ColumnType type() default ColumnType.DEFAULT;
 
 }

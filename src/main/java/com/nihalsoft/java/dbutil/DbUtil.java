@@ -29,15 +29,21 @@ public class DbUtil {
                 p2.put(k, prop.get(k).toString());
             }
         }
-        p2.forEach((k, v) -> System.out.println(" --> " + k + " = " + v));
+        
 
         Properties p1 = new Properties();
         p1.put("user", p2.get("user"));
         p1.put("password", p2.get("password"));
         if (p2.containsKey("driverClass")) {
+            System.out.println("Setting driver class");
             p1.put("driverClass", p2.get("driverClass"));
         }
 
+        p2.remove("user");
+        p2.remove("password");
+
+        p2.forEach((k, v) -> System.out.println(" --> " + k + " = " + v));
+        
         DataSource ds = DataSources.unpooledDataSource(p2.get("jdbcUrl").toString(), p1);
 
         PoolBackedDataSource ds2 = (PoolBackedDataSource) DataSources.pooledDataSource(ds, p2);

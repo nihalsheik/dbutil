@@ -1,34 +1,31 @@
 package com.nihalsoft.java.dbutil.common;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
-public class DataMap extends HashMap<String, Object> {
+public class DataMap implements Map<String, Object> {
 
-    private static final long serialVersionUID = 1L;
+    Map<String, Object> source;
+
+    public DataMap() {
+        super();
+        source = new HashMap<String, Object>();
+    }
 
     public static DataMap create() {
         return new DataMap();
     }
 
-    public static DataMap create(String key, Object value) {
-        return DataMap.create().put(key, value);
-    }
-    
-    public static DataMap from(Map<String, Object> data) {
-        DataMap d = new DataMap();
-        d.putAll(data);
-        return d;
-    }
-
-    public DataMap put(String key, Object value) {
-        super.put(key, value);
-        return this;
+    @Override
+    public Object put(String key, Object value) {
+        return source.put(key, value);
     }
 
     public String getString(String key) {
         try {
-            return this.get(key).toString();
+            return source.get(key).toString();
         } catch (Exception ex) {
             return "";
         }
@@ -36,7 +33,7 @@ public class DataMap extends HashMap<String, Object> {
 
     public Long getLong(String key) {
         try {
-            return Long.valueOf(this.get(key).toString());
+            return Long.valueOf(source.get(key).toString());
         } catch (Exception ex) {
             return 0L;
         }
@@ -44,7 +41,7 @@ public class DataMap extends HashMap<String, Object> {
 
     public int getInt(String key) {
         try {
-            return Integer.valueOf(this.get(key).toString());
+            return Integer.valueOf(source.get(key).toString());
         } catch (Exception ex) {
             return 0;
         }
@@ -52,19 +49,19 @@ public class DataMap extends HashMap<String, Object> {
 
     public float getFloat(String key) {
         try {
-            return Float.valueOf(this.get(key).toString());
+            return Float.valueOf(source.get(key).toString());
         } catch (Exception ex) {
             return 0;
         }
     }
 
     public Object get(String key) {
-        return super.get(key);
+        return source.get(key);
     }
 
     public Object get(String key, Object defaultValue) {
-        if (this.containsKey(key)) {
-            return super.get(key);
+        if (source.containsKey(key)) {
+            return source.get(key);
         } else {
             return defaultValue;
         }
@@ -72,22 +69,80 @@ public class DataMap extends HashMap<String, Object> {
 
     public void remove(String... keys) {
         for (String key : keys) {
-            this.remove(key);
+            source.remove(key);
         }
     }
 
     @SuppressWarnings("unchecked")
     public <T> T get(String key, Class<T> clazz) {
-        return (T) super.get(key);
+        return (T) source.get(key);
     }
 
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        this.entrySet().forEach(a -> {
+        source.entrySet().forEach(a -> {
             sb.append(a.getKey()).append("=").append(a.getValue()).append(" ");
         });
         return sb.toString();
     }
 
+    @Override
+    public int size() {
+        return source.size();
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return source.isEmpty();
+    }
+
+    @Override
+    public boolean containsKey(Object key) {
+        return source.containsKey(key);
+    }
+
+    @Override
+    public boolean containsValue(Object value) {
+        return source.containsValue(value);
+    }
+
+    @Override
+    public Object get(Object key) {
+        return source.get(key);
+    }
+
+    @Override
+    public Object remove(Object key) {
+        return source.remove(key);
+    }
+
+    @Override
+    public void putAll(Map<? extends String, ? extends Object> m) {
+        source.putAll(m);
+    }
+
+    @Override
+    public void clear() {
+        source.clear();
+    }
+
+    @Override
+    public Set<String> keySet() {
+        return source.keySet();
+    }
+
+    @Override
+    public Collection<Object> values() {
+        return source.values();
+    }
+
+    @Override
+    public Set<Entry<String, Object>> entrySet() {
+        return source.entrySet();
+    }
+
+    public Map<String, Object> toMap() {
+        return source;
+    }
 }
