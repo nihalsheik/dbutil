@@ -19,8 +19,9 @@ public class DataMap implements Map<String, Object> {
     }
 
     @Override
-    public Object put(String key, Object value) {
-        return source.put(key, value);
+    public DataMap put(String key, Object value) {
+        source.put(key, value);
+        return this;
     }
 
     public String getString(String key) {
