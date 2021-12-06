@@ -9,6 +9,7 @@ import java.util.Arrays;
 import org.apache.commons.dbutils.BeanProcessor;
 
 import com.nihalsoft.java.dbutil.common.Column;
+import com.nihalsoft.java.dbutil.common.DataMap;
 
 public class BeanProcessorEx extends BeanProcessor {
 
@@ -18,23 +19,20 @@ public class BeanProcessorEx extends BeanProcessor {
         int[] columnToProperty = new int[cols + 1];
         Arrays.fill(columnToProperty, PROPERTY_NOT_FOUND);
 
+        DataMap dm = new DataMap();
+        for (int i = 0; i < props.length; i++) {
+            Method getter = props[i].getReadMethod();
+            Column e = getter.getAnnotation(Column.class);
+            String key = (e != null && !e.name().equals("")) ? e.name() : props[i].getName();
+            dm.put(key, i);
+        }
+
         for (int col = 1; col <= cols; col++) {
             String columnName = rsmd.getColumnLabel(col);
             if (null == columnName || 0 == columnName.length()) {
                 columnName = rsmd.getColumnName(col);
             }
-            for (int i = 0; i < props.length; i++) {
-                Method getter = props[i].getReadMethod();
-                Column e = getter.getAnnotation(Column.class);
-                String key = getter.getName();
-                if (e != null && !e.name().equals("")) {
-                    key = e.name();
-                }
-                if (columnName.equalsIgnoreCase(key)) {
-                    columnToProperty[col] = i;
-                    break;
-                }
-            }
+            columnToProperty[col] = dm.getInt(columnName);
         }
 
         return columnToProperty;
