@@ -10,8 +10,10 @@ import java.util.Map.Entry;
 
 import javax.sql.DataSource;
 
+import org.apache.commons.dbutils.BasicRowProcessor;
 import org.apache.commons.dbutils.DbUtils;
 import org.apache.commons.dbutils.QueryRunner;
+import org.apache.commons.dbutils.RowProcessor;
 import org.apache.commons.dbutils.handlers.ArrayHandler;
 import org.apache.commons.dbutils.handlers.ArrayListHandler;
 import org.apache.commons.dbutils.handlers.BeanHandler;
@@ -20,12 +22,16 @@ import org.apache.commons.dbutils.handlers.MapHandler;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
 
 import com.nihalsoft.java.dbutil.common.DataMap;
+import com.nihalsoft.java.dbutil.result.BeanProcessorEx;
 import com.nihalsoft.java.dbutil.result.handler.DataMapListHandler;
 
 public class DB extends QueryRunner {
 
+    private RowProcessor rowProcessor;
+
     public DB(DataSource ds) {
         super(ds);
+        rowProcessor = new BasicRowProcessor(new BeanProcessorEx());
     }
 
     /**
@@ -104,7 +110,7 @@ public class DB extends QueryRunner {
      * @throws Exception
      */
     public <T> T queryForBean(String sql, Class<? extends T> clazz, Object... args) throws Exception {
-        return this.query(sql, new BeanHandler<T>(clazz, DbUtil.getBasicRowProcessor()), args);
+        return this.query(sql, new BeanHandler<T>(clazz, rowProcessor), args);
     }
 
     /**
@@ -117,7 +123,7 @@ public class DB extends QueryRunner {
      * @throws Exception
      */
     public <T> List<T> queryForBeanList(String sql, Class<? extends T> type, Object... args) throws Exception {
-        return this.query(sql, new BeanListHandler<T>(type, DbUtil.getBasicRowProcessor()), args);
+        return this.query(sql, new BeanListHandler<T>(type, rowProcessor), args);
     }
 
     /**
@@ -190,6 +196,10 @@ public class DB extends QueryRunner {
 
     public <T> Dao<T> dao(Class<T> clazz) {
         return new Dao<T>(this, clazz);
+    }
+
+    public RowProcessor getRowProcessor() {
+        return rowProcessor;
     }
 
     public static void main(String[] args) throws Exception {

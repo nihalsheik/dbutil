@@ -1,66 +1,36 @@
 package com.nihalsoft.java.dbutil;
 
-import java.util.Enumeration;
 import java.util.Properties;
 
 import javax.sql.DataSource;
 
-import org.apache.commons.dbutils.BasicRowProcessor;
-import org.apache.commons.dbutils.RowProcessor;
-
 import com.mchange.v2.c3p0.DataSources;
-import com.mchange.v2.c3p0.PoolBackedDataSource;
-import com.nihalsoft.java.dbutil.result.BeanProcessorEx;
 
 public class DbUtil {
 
-    private static RowProcessor basicRowProcessor;
-
-    public static DB configure(Properties prop) throws Exception {
-        return DbUtil.configure(prop, "");
-
+    public static DB configure(String driverClass, String jdbcUrl, String user, String password) throws Exception {
+        return DbUtil.configure(driverClass, jdbcUrl, user, password, null);
     }
 
-    public static RowProcessor getBasicRowProcessor() {
-        return basicRowProcessor;
-    }
+    public static DB configure(String driverClass, String jdbcUrl, String user, String password, Properties prop)
+            throws Exception {
 
-    public static DB configure(Properties prop, String prefix) throws Exception {
+        Properties p = new Properties();
+        p.put("user", user);
+        p.put("password", password);
+        p.put("driverClass", driverClass);
 
-        basicRowProcessor = new BasicRowProcessor(new BeanProcessorEx());
+        DataSource uds = DataSources.unpooledDataSource(jdbcUrl, p);
 
-        Enumeration<Object> keys = prop.keys();
-
-        Properties p2 = new Properties();
-
-        while (keys.hasMoreElements()) {
-            String k = keys.nextElement().toString();
-            if (prefix.equals("")) {
-                p2.put(k, prop.get(k).toString());
-            } else if (k.startsWith(prefix)) {
-                p2.put(k.replace(prefix, ""), prop.get(k).toString());
+        if (prop != null) {
+            for (Object key : prop.keySet()) {
+                prop.put(key, prop.get(key).toString());
             }
+            prop.forEach((k, v) -> System.out.println(" --> " + k + " = " + v));
+            return new DB(DataSources.pooledDataSource(uds, prop));
+        } else {
+            return new DB(DataSources.pooledDataSource(uds));
         }
-
-        Properties p1 = new Properties();
-        p1.put("user", p2.get("user"));
-        p1.put("password", p2.get("password"));
-        if (p2.containsKey("driverClass")) {
-            System.out.println("Setting driver class");
-            p1.put("driverClass", p2.get("driverClass"));
-        }
-
-        p2.remove("user");
-        p2.remove("password");
-
-        p2.forEach((k, v) -> System.out.println(" --> " + k + " = " + v));
-
-        DataSource ds = DataSources.unpooledDataSource(p2.get("jdbcUrl").toString(), p1);
-
-        PoolBackedDataSource ds2 = (PoolBackedDataSource) DataSources.pooledDataSource(ds, p2);
-        DB db = new DB(ds2);
-        db.execute("SELECT 1");
-        return db;
 
     }
 }

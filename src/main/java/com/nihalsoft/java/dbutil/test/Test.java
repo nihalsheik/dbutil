@@ -11,17 +11,14 @@ public class Test {
 
     public static void main(String[] args) throws Exception {
 
-        final Properties p = new Properties();
-        p.put("user", "root");
-        p.put("password", "Welcome@1");
-        p.put("jdbcUrl", "jdbc:mysql://localhost:3306/repos");
-        p.put("driverClass", "com.mysql.jdbc.Driver");
+        Properties p = new Properties();
         p.put("minPoolSize", 5);
         p.put("initialPoolSize", 5);
         p.put("maxPoolSize", 10);
         p.put("checkoutTimeout", 1000);
+        p.put("maxStatements", 10);
 
-        DB db = DbUtil.configure(p);
+        DB db = DbUtil.configure("com.mysql.jdbc.Driver", "jdbc:mysql://localhost:3306/repos", "root", "", p);
 
         DataMap list = db.queryForDataMap("select * from tbl_client");
 

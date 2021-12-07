@@ -51,7 +51,7 @@ public class Dao<T> {
             return null;
         }
         return db.query("SELECT * FROM " + bi.getTableName() + " WHERE " + idCol.getName() + "=?",
-                new BeanHandler<T>(clazz, DbUtil.getBasicRowProcessor()), id);
+                new BeanHandler<T>(clazz, db.getRowProcessor()), id);
     }
 
     /**
@@ -61,8 +61,7 @@ public class Dao<T> {
      */
     public List<T> findAll() throws Exception {
         BeanInfo bi = new BeanInfo(clazz);
-        return db.query("SELECT * FROM " + bi.getTableName(),
-                new BeanListHandler<T>(clazz, DbUtil.getBasicRowProcessor()));
+        return db.query("SELECT * FROM " + bi.getTableName(), new BeanListHandler<T>(clazz, db.getRowProcessor()));
     }
 
     /**
@@ -75,7 +74,7 @@ public class Dao<T> {
     public List<T> find(String criteria, Object... args) throws Exception {
         BeanInfo bi = new BeanInfo(clazz);
         return db.query("SELECT * FROM " + bi.getTableName() + " WHERE " + criteria,
-                new BeanListHandler<T>(clazz, DbUtil.getBasicRowProcessor()), args);
+                new BeanListHandler<T>(clazz, db.getRowProcessor()), args);
     }
 
     /**
