@@ -14,6 +14,10 @@ public class DataMap implements Map<String, Object> {
         source = new HashMap<String, Object>();
     }
 
+    public DataMap(Map<String, Object> map) {
+        source = map;
+    }
+
     public static DataMap create() {
         return new DataMap();
     }

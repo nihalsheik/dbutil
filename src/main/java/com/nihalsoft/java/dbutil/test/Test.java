@@ -5,6 +5,7 @@ import java.util.Properties;
 
 import com.nihalsoft.java.dbutil.DB;
 import com.nihalsoft.java.dbutil.DbUtil;
+import com.nihalsoft.java.dbutil.common.DataMap;
 
 public class Test {
 
@@ -22,10 +23,10 @@ public class Test {
 
         DB db = DbUtil.configure(p);
 
-//        DataMap list = db.queryForDataMap("select * from tbl_client");
+        DataMap list = db.queryForDataMap("select * from tbl_client");
 
-//        System.out.println(list.get("email"));
-
+        System.out.println(list.get("email"));
+        System.out.println("---------------------");
 //        DataMap dm = new DataMap();
 //        dm.put("name", "sheik");
 //        dm.put("email", "email-333");
@@ -39,7 +40,9 @@ public class Test {
 //        p2.setCreateTime(Calendar.getInstance().getTime());
 //        pr.insert(p2);
 
-        List<Person> p3 = db.queryForBeanList("select create_time,id,name,age from tbl_person", Person.class);
+        PersonDao pd = new PersonDao();
+        pd.init(db, Person.class);
+        List<Person> p3 = pd.findAll();
 
         for (Person per : p3) {
             System.out.println("---------------------");
