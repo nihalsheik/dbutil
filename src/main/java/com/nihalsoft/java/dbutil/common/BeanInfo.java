@@ -1,5 +1,6 @@
 package com.nihalsoft.java.dbutil.common;
 
+import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.util.ArrayList;
@@ -17,27 +18,27 @@ public class BeanInfo {
     private List<Object> values;
 
     public BeanInfo(Object object) throws Exception {
-        columns = new ArrayList<ColumnInfo>();
-        for (PropertyDescriptor property : Introspector.getBeanInfo(object.getClass()).getPropertyDescriptors()) {
-            if (!property.getName().equals("class")) {
-                columns.add(new ColumnInfo(property, object));
-            }
-        }
-        this.init(object.getClass());
+        this.init(null, object);
     }
 
     public BeanInfo(Class<?> clazz) throws Exception {
-        columns = new ArrayList<ColumnInfo>();
-        for (PropertyDescriptor property : Introspector.getBeanInfo(clazz).getPropertyDescriptors()) {
-            if (!property.getName().equals("class")) {
-                columns.add(new ColumnInfo(property, clazz));
-            }
-        }
-        this.init(clazz);
-
+        this.init(clazz, null);
     }
 
-    private void init(Class<?> clazz) {
+    private void init(Class<?> clazz, Object object) throws IntrospectionException {
+
+        columns = new ArrayList<ColumnInfo>();
+        for (PropertyDescriptor property : Introspector.getBeanInfo(clazz != null ? clazz : object.getClass())
+                .getPropertyDescriptors()) {
+            if (!property.getName().equals("class")) {
+                if (clazz != null) {
+                    columns.add(new ColumnInfo(property, clazz));
+                } else {
+                    columns.add(new ColumnInfo(property, object));
+                }
+            }
+        }
+
         values = new ArrayList<Object>();
         Table tbl = clazz.getAnnotation(Table.class);
         this.tableName = tbl.name();
@@ -45,8 +46,8 @@ public class BeanInfo {
             if (ci.isIdColumn()) {
                 this.idColumn = ci;
             }
-//            columnNames.add(ci.getName());
-//            values.add(ci.getValue());
+            columnNames.add(ci.getName());
+            values.add(ci.getValue());
         }
     }
 
@@ -61,13 +62,13 @@ public class BeanInfo {
     public ColumnInfo getIdColumn() {
         return idColumn;
     }
-//
-//    public List<String> getColumnNames() {
-//        return columnNames;
-//    }
-//
-//    public List<Object> getValues() {
-//        return values;
-//    }
+
+    public List<String> getColumnNames() {
+        return columnNames;
+    }
+
+    public List<Object> getValues() {
+        return values;
+    }
 
 }

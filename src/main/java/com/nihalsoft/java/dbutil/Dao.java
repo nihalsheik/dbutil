@@ -3,8 +3,6 @@ package com.nihalsoft.java.dbutil;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.dbutils.handlers.BeanHandler;
-import org.apache.commons.dbutils.handlers.BeanListHandler;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
 
 import com.nihalsoft.java.dbutil.common.BeanInfo;
@@ -13,7 +11,7 @@ import com.nihalsoft.java.dbutil.common.ColumnInfo;
 public class Dao<T> {
 
     private DB db;
-    private Class<? extends T> clazz;
+    private Class<T> clazz;
 
     public Dao() {
 
@@ -24,7 +22,7 @@ public class Dao<T> {
      * @param db
      * @param clazz
      */
-    public Dao(DB db, Class<? extends T> clazz) {
+    public Dao(DB db, Class<T> clazz) {
         this.init(db, clazz);
     }
 
@@ -33,7 +31,7 @@ public class Dao<T> {
      * @param db
      * @param clazz
      */
-    public void init(DB db, Class<? extends T> clazz) {
+    public void init(DB db, Class<T> clazz) {
         this.db = db;
         this.clazz = clazz;
     }
@@ -50,8 +48,7 @@ public class Dao<T> {
         if (idCol == null) {
             return null;
         }
-        return db.query("SELECT * FROM " + bi.getTableName() + " WHERE " + idCol.getName() + "=?",
-                new BeanHandler<T>(clazz, db.getRowProcessor()), id);
+        return db.queryForBean("SELECT * FROM " + bi.getTableName() + " WHERE " + idCol.getName() + "=?", clazz, id);
     }
 
     /**
@@ -61,7 +58,7 @@ public class Dao<T> {
      */
     public List<T> findAll() throws Exception {
         BeanInfo bi = new BeanInfo(clazz);
-        return db.query("SELECT * FROM " + bi.getTableName(), new BeanListHandler<T>(clazz, db.getRowProcessor()));
+        return db.queryForBeanList("SELECT * FROM " + bi.getTableName(), clazz);
     }
 
     /**
@@ -73,8 +70,7 @@ public class Dao<T> {
      */
     public List<T> find(String criteria, Object... args) throws Exception {
         BeanInfo bi = new BeanInfo(clazz);
-        return db.query("SELECT * FROM " + bi.getTableName() + " WHERE " + criteria,
-                new BeanListHandler<T>(clazz, db.getRowProcessor()), args);
+        return db.queryForBeanList("SELECT * FROM " + bi.getTableName() + " WHERE " + criteria, clazz, args);
     }
 
     /**
