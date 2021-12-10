@@ -14,9 +14,6 @@ public class BeanInfo {
 
     private ColumnInfo idColumn;
 
-    private List<String> columnNames;
-    private List<Object> values;
-
     public BeanInfo(Object object) throws Exception {
         this.init(null, object);
     }
@@ -39,15 +36,16 @@ public class BeanInfo {
             }
         }
 
-        values = new ArrayList<Object>();
+        if (clazz == null) {
+            clazz = object.getClass();
+        }
+
         Table tbl = clazz.getAnnotation(Table.class);
         this.tableName = tbl.name();
         for (ColumnInfo ci : columns) {
             if (ci.isIdColumn()) {
                 this.idColumn = ci;
             }
-            columnNames.add(ci.getName());
-            values.add(ci.getValue());
         }
     }
 
@@ -61,14 +59,6 @@ public class BeanInfo {
 
     public ColumnInfo getIdColumn() {
         return idColumn;
-    }
-
-    public List<String> getColumnNames() {
-        return columnNames;
-    }
-
-    public List<Object> getValues() {
-        return values;
     }
 
 }

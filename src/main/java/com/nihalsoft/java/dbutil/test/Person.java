@@ -1,6 +1,6 @@
 package com.nihalsoft.java.dbutil.test;
 
-import java.time.LocalDateTime;
+import java.util.Date;
 
 import com.nihalsoft.java.dbutil.common.Column;
 import com.nihalsoft.java.dbutil.common.ColumnType;
@@ -12,7 +12,7 @@ public class Person {
     private long id;
     private String name;
     private int age;
-    private LocalDateTime createTime;
+    private Date createTime;
 
     @Column(type = ColumnType.ID)
     public long getId() {
@@ -40,11 +40,11 @@ public class Person {
     }
 
     @Column(name = "create_time")
-    public LocalDateTime getCreateTime() {
+    public Date getCreateTime() {
         return createTime;
     }
 
-    public void setCreateTime(LocalDateTime createTime) {
+    public void setCreateTime(Date createTime) {
         this.createTime = createTime;
     }
 

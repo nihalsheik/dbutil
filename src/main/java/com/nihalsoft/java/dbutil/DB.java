@@ -23,6 +23,7 @@ import org.apache.commons.dbutils.handlers.ScalarHandler;
 
 import com.nihalsoft.java.dbutil.common.DataMap;
 import com.nihalsoft.java.dbutil.result.BeanProcessorEx;
+import com.nihalsoft.java.dbutil.result.handler.DataMapHandler;
 import com.nihalsoft.java.dbutil.result.handler.DataMapListHandler;
 
 public class DB extends QueryRunner {
@@ -97,9 +98,9 @@ public class DB extends QueryRunner {
      * @throws Exception
      */
     public DataMap queryForDataMap(String sql, Object... args) throws Exception {
-        return new DataMap(this.query(sql, new MapHandler(), args));
+        return this.query(sql, new DataMapHandler(), args);
     }
-
+    
     /**
      * 
      * @param <T>
@@ -124,6 +125,19 @@ public class DB extends QueryRunner {
      */
     public <T> List<T> queryForBeanList(String sql, Class<? extends T> type, Object... args) throws Exception {
         return this.query(sql, new BeanListHandler<T>(type, rowProcessor), args);
+    }
+
+    /**
+     * 
+     * @param <T>
+     * @param sql
+     * @param type
+     * @param args
+     * @return
+     * @throws SQLException
+     */
+    public <T> T queryForObject(String sql, Class<T> type, Object... args) throws SQLException {
+        return this.query(sql, new ScalarHandler<T>(), args);
     }
 
     /**
