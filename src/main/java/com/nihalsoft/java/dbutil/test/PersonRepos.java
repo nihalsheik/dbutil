@@ -1,11 +1,11 @@
 package com.nihalsoft.java.dbutil.test;
 
 import com.nihalsoft.java.dbutil.DB;
-import com.nihalsoft.java.dbutil.Dao;
+import com.nihalsoft.java.dbutil.Repository;
 
-public class PersonDao extends Dao<Person>{
+public class PersonRepos extends Repository<Person>{
     
-    public PersonDao(DB db) {
+    public PersonRepos(DB db) {
         this.init(db, Person.class);
     }
 

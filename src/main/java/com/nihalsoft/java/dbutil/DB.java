@@ -18,7 +18,6 @@ import org.apache.commons.dbutils.handlers.ArrayHandler;
 import org.apache.commons.dbutils.handlers.ArrayListHandler;
 import org.apache.commons.dbutils.handlers.BeanHandler;
 import org.apache.commons.dbutils.handlers.BeanListHandler;
-import org.apache.commons.dbutils.handlers.MapHandler;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
 
 import com.nihalsoft.java.dbutil.common.DataMap;
@@ -208,8 +207,8 @@ public class DB extends QueryRunner {
         return this.update(sql, values);
     }
 
-    public <T> Dao<T> dao(Class<T> clazz) {
-        return new Dao<T>(this, clazz);
+    public <T> Repository<T> repository(Class<T> clazz) {
+        return new Repository<T>(this, clazz);
     }
 
     public RowProcessor getRowProcessor() {

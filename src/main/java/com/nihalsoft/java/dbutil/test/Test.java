@@ -1,5 +1,6 @@
 package com.nihalsoft.java.dbutil.test;
 
+import java.sql.Connection;
 import java.util.List;
 import java.util.Properties;
 import java.util.ServiceLoader;
@@ -8,7 +9,6 @@ import org.apache.commons.dbutils.PropertyHandler;
 
 import com.nihalsoft.java.dbutil.DB;
 import com.nihalsoft.java.dbutil.DbUtil;
-import com.nihalsoft.java.dbutil.common.DataMap;
 
 public class Test {
 
@@ -29,8 +29,9 @@ public class Test {
         p.put("maxPoolSize", 10);
         p.put("checkoutTimeout", 1000);
         p.put("maxStatements", 10);
+        p.put("autoCommitOnClose", true);
 
-        DB db = DbUtil.configure("com.mysql.jdbc.Driver", "jdbc:mysql://localhost:3306/repos", "root", "", p);
+        DB db = DbUtil.configure("com.mysql.jdbc.Driver", "jdbc:mysql://localhost:3306/repos", "root", "Welcome@1", p);
 
 //        DataMap list = db.queryForDataMap("select * from tbl_client");
 //
@@ -49,7 +50,7 @@ public class Test {
 //        p2.setCreateTime(Calendar.getInstance().getTime());
 //        pr.insert(p2);
 
-        PersonDao pd = new PersonDao(db);
+        PersonRepos pd = new PersonRepos(db);
         List<Person> p3 = pd.findAll();
 
         for (Person per : p3) {
@@ -63,6 +64,10 @@ public class Test {
         p3.get(0).setName("updated");
         
         pd.update(p3.get(0));
+        
+        Connection con = db.getDataSource().getConnection();
+        
+        
     }
 
 }

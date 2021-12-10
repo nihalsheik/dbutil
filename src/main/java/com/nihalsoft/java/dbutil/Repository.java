@@ -8,12 +8,12 @@ import org.apache.commons.dbutils.handlers.ScalarHandler;
 import com.nihalsoft.java.dbutil.common.BeanInfo;
 import com.nihalsoft.java.dbutil.common.ColumnInfo;
 
-public class Dao<T> {
+public class Repository<T> {
 
     private DB db;
     private Class<T> clazz;
 
-    public Dao() {
+    public Repository() {
 
     }
 
@@ -22,7 +22,7 @@ public class Dao<T> {
      * @param db
      * @param clazz
      */
-    public Dao(DB db, Class<T> clazz) {
+    public Repository(DB db, Class<T> clazz) {
         this.init(db, clazz);
     }
 

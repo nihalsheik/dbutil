@@ -1,6 +1,7 @@
 package com.nihalsoft.java.dbutil.common;
 
 import java.util.HashMap;
+import java.util.Map;
 
 public class DataMap extends HashMap<String, Object> {
 
@@ -12,6 +13,12 @@ public class DataMap extends HashMap<String, Object> {
 
     public static DataMap create() {
         return new DataMap();
+    }
+    
+    public static DataMap from(Map<String, Object> source) {
+        DataMap dm = new DataMap();
+        dm.putAll(source);
+        return dm;
     }
 
     public DataMap add(String key, Object value) {
