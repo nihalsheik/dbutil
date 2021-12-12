@@ -1,6 +1,5 @@
 package com.nihalsoft.java.dbutil.test;
 
-import java.sql.Connection;
 import java.util.List;
 import java.util.Properties;
 import java.util.ServiceLoader;
@@ -50,24 +49,32 @@ public class Test {
 //        p2.setCreateTime(Calendar.getInstance().getTime());
 //        pr.insert(p2);
 
-        PersonRepos pd = new PersonRepos(db);
-        List<Person> p3 = pd.findAll();
+        try {
 
-        for (Person per : p3) {
-            System.out.println("---------------------");
-            System.out.println(per.getId());
-            System.out.println(per.getName());
-            System.out.println(per.getAge());
-            System.out.println(per.getCreateTime());
+            PersonRepos pd = new PersonRepos(db);
+//        List<Person> p3 = pd.findAll();
+//
+//        for (Person per : p3) {
+//            System.out.println("---------------------");
+//            System.out.println(per.getId());
+//            System.out.println(per.getName());
+//            System.out.println(per.getAge());
+//            System.out.println(per.getCreateTime());
+//        }
+//
+//        p3.get(0).setName("updated");
+//        
+//        pd.update(p3.get(0));
+
+            Person per = new Person();
+            per.setId(6);
+            per.setName("khaja");
+            per.setAge(100);
+            pd.update(per);
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
-
-        p3.get(0).setName("updated");
-        
-        pd.update(p3.get(0));
-        
-        Connection con = db.getDataSource().getConnection();
-        
-        
     }
 
 }

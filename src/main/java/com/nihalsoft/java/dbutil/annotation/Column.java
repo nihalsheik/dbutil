@@ -1,4 +1,4 @@
-package com.nihalsoft.java.dbutil.common;
+package com.nihalsoft.java.dbutil.annotation;
 
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
@@ -12,6 +12,6 @@ public @interface Column {
 
     String name() default "";
 
-    ColumnType type() default ColumnType.DEFAULT;
+    boolean insertable() default true;
 
 }

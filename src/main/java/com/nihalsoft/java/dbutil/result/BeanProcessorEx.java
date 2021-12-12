@@ -8,7 +8,7 @@ import java.util.Arrays;
 
 import org.apache.commons.dbutils.BeanProcessor;
 
-import com.nihalsoft.java.dbutil.common.Column;
+import com.nihalsoft.java.dbutil.annotation.Column;
 import com.nihalsoft.java.dbutil.common.DataMap;
 
 public class BeanProcessorEx extends BeanProcessor {

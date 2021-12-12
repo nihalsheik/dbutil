@@ -81,7 +81,7 @@ public class DataMap extends HashMap<String, Object> {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         this.entrySet().forEach(a -> {
-            sb.append(a.getKey()).append("=").append(a.getValue()).append(" ");
+            sb.append(a.getKey()).append("=").append(a.getValue()).append(", ");
         });
         return sb.toString();
     }

@@ -5,8 +5,9 @@ import java.util.List;
 
 import org.apache.commons.dbutils.handlers.ScalarHandler;
 
-import com.nihalsoft.java.dbutil.common.BeanInfo;
 import com.nihalsoft.java.dbutil.common.ColumnInfo;
+import com.nihalsoft.java.dbutil.common.EntityDescriptor;
+import com.nihalsoft.java.dbutil.common.EntityUtil;
 
 public class Repository<T> {
 
@@ -14,7 +15,6 @@ public class Repository<T> {
     private Class<T> clazz;
 
     public Repository() {
-
     }
 
     /**
@@ -43,12 +43,12 @@ public class Repository<T> {
      * @throws Exception
      */
     public T findOne(Object id) throws Exception {
-        BeanInfo bi = new BeanInfo(clazz);
-        ColumnInfo idCol = bi.getIdColumn();
+        EntityDescriptor ed = EntityUtil.getEntityDescriptor(clazz);
+        ColumnInfo idCol = ed.getIdColumn();
         if (idCol == null) {
             return null;
         }
-        return db.queryForBean("SELECT * FROM " + bi.getTableName() + " WHERE " + idCol.getName() + "=?", clazz, id);
+        return db.queryForBean("SELECT * FROM " + ed.getTableName() + " WHERE " + idCol.getName() + "=?", clazz, id);
     }
 
     /**
@@ -57,8 +57,11 @@ public class Repository<T> {
      * @throws Exception
      */
     public List<T> findAll() throws Exception {
-        BeanInfo bi = new BeanInfo(clazz);
-        return db.queryForBeanList("SELECT * FROM " + bi.getTableName(), clazz);
+        String tn = EntityUtil.getTableName(clazz);
+        if (tn.equals("")) {
+            return null;
+        }
+        return db.queryForBeanList("SELECT * FROM " + tn, clazz);
     }
 
     /**
@@ -69,8 +72,8 @@ public class Repository<T> {
      * @throws Exception
      */
     public List<T> find(String criteria, Object... args) throws Exception {
-        BeanInfo bi = new BeanInfo(clazz);
-        return db.queryForBeanList("SELECT * FROM " + bi.getTableName() + " WHERE " + criteria, clazz, args);
+        EntityDescriptor ed = EntityUtil.getEntityDescriptor(clazz);
+        return db.queryForBeanList("SELECT * FROM " + ed.getTableName() + " WHERE " + criteria, clazz, args);
     }
 
     /**
@@ -81,21 +84,21 @@ public class Repository<T> {
      */
     public Object insert(T entity) throws Exception {
 
-        BeanInfo bi = new BeanInfo(entity);
+        EntityDescriptor ed = EntityUtil.getEntityDescriptor(entity);
 
         String col = "";
         List<Object> values = new ArrayList<Object>();
 
-        for (ColumnInfo ci : bi.getColumns()) {
-            if (!ci.isIdColumn()) {
+        for (ColumnInfo ci : ed.getColumns()) {
+            if (!ci.isIdColumn() && ci.isInsertable()) {
                 col += "," + ci.getName() + "=?";
                 values.add(ci.getValue());
             }
         }
 
-        String sql = "INSERT INTO " + bi.getTableName() + " SET " + col.substring(1);
+        String sql = "INSERT INTO " + ed.getTableName() + " SET " + col.substring(1);
         System.out.println(sql);
-        return db.insert(sql, new ScalarHandler<Object>(), values);
+        return db.insert(sql, new ScalarHandler<Object>(), values.toArray());
     }
 
     /**
@@ -105,7 +108,7 @@ public class Repository<T> {
      * @throws Exception
      */
     public int update(T entity) throws Exception {
-        BeanInfo bi = new BeanInfo(entity);
+        EntityDescriptor ed = EntityUtil.getEntityDescriptor(entity);
 
         List<String> cols = new ArrayList<String>();
         List<Object> values = new ArrayList<Object>();
@@ -113,11 +116,11 @@ public class Repository<T> {
         String idName = "";
         Object idValue = null;
 
-        for (ColumnInfo ci : bi.getColumns()) {
+        for (ColumnInfo ci : ed.getColumns()) {
             if (ci.isIdColumn()) {
                 idName = ci.getName();
                 idValue = ci.getValue();
-            } else {
+            } else if (ci.getValue() != null && !ci.getValue().toString().isEmpty()) {
                 cols.add(ci.getName() + "=?");
                 values.add(ci.getValue());
             }
@@ -128,7 +131,7 @@ public class Repository<T> {
         }
         values.add(idValue);
 
-        String sql = "UPDATE " + bi.getTableName() + " SET " + String.join(",", cols) + " WHERE " + idName + "=?";
+        String sql = "UPDATE " + ed.getTableName() + " SET " + String.join(",", cols) + " WHERE " + idName + "=?";
         System.out.println(sql);
         return db.update(sql, values.toArray());
     }
@@ -140,10 +143,10 @@ public class Repository<T> {
      * @throws Exception
      */
     public int delete(T entity) throws Exception {
-        BeanInfo bi = new BeanInfo(entity);
-        String sql = "DELETE FROM " + bi.getTableName() + " WHERE " + bi.getIdColumn().getName() + "=?";
+        EntityDescriptor ed = EntityUtil.getEntityDescriptor(entity);
+        String sql = "DELETE FROM " + ed.getTableName() + " WHERE " + ed.getIdColumn().getName() + "=?";
         System.out.println(sql);
-        return db.update(sql, bi.getIdColumn().getValue());
+        return db.update(sql, ed.getIdColumn().getValue());
     }
 
     /**
@@ -153,10 +156,22 @@ public class Repository<T> {
      * @throws Exception
      */
     public int deleteById(Object id) throws Exception {
-        BeanInfo bi = new BeanInfo(this.clazz);
-        String sql = "DELETE FROM " + bi.getTableName() + " WHERE " + bi.getIdColumn().getName() + "=?";
+        EntityDescriptor ed = EntityUtil.getEntityDescriptor(clazz);
+        String sql = "DELETE FROM " + ed.getTableName() + " WHERE " + ed.getIdColumn().getName() + "=?";
         System.out.println(sql);
         return db.update(sql, id);
     }
 
+    public int getCount() throws Exception {
+        EntityDescriptor ed = EntityUtil.getEntityDescriptor(clazz);
+        String idcol = ed.getIdColumn() == null ? "*" : ed.getIdColumn().getName();
+        String sql = "SELECT count(" + idcol + ") as total FROM " + ed.getTableName();
+        System.out.println(sql);
+        return db.query(sql, new ScalarHandler<Integer>());
+    }
+
+    public Object getScalar(String sql, Object... args) throws Exception {
+        System.out.println(sql);
+        return db.query(sql, new ScalarHandler<Object>(), args);
+    }
 }

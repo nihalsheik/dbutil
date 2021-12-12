@@ -2,50 +2,49 @@ package com.nihalsoft.java.dbutil.test;
 
 import java.util.Date;
 
-import com.nihalsoft.java.dbutil.common.Column;
-import com.nihalsoft.java.dbutil.common.ColumnType;
-import com.nihalsoft.java.dbutil.common.Table;
+import com.nihalsoft.java.dbutil.annotation.Column;
+import com.nihalsoft.java.dbutil.annotation.Id;
+import com.nihalsoft.java.dbutil.annotation.Table;
+import com.nihalsoft.java.dbutil.common.Entity;
 
 @Table(name = "tbl_person")
-public class Person {
+public class Person extends Entity {
 
-    private long id;
-    private String name;
-    private int age;
-    private Date createTime;
-
-    @Column(type = ColumnType.ID)
+    @Id
+    @Column
     public long getId() {
-        return id;
+        return get("id");
     }
 
     public void setId(long id) {
-        this.id = id;
+        set("id", id);
     }
 
+    @Column
     public String getName() {
-        return name;
+        return get("name");
     }
 
     public void setName(String name) {
-        this.name = name;
+        set("name", name);
     }
 
+    @Column
     public int getAge() {
-        return age;
+        return get("age");
     }
 
     public void setAge(int age) {
-        this.age = age;
+        set("age", age);
     }
 
     @Column(name = "create_time")
     public Date getCreateTime() {
-        return createTime;
+        return get("create_time");
     }
 
     public void setCreateTime(Date createTime) {
-        this.createTime = createTime;
+        set("create_time", createTime);
     }
 
 }
