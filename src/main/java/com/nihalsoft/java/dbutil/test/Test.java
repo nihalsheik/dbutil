@@ -57,8 +57,9 @@ public class Test {
         p.put("maxStatements", 10);
         p.put("autoCommitOnClose", true);
 
-        DB db = new DB("com.mysql.jdbc.Driver", "jdbc:mysql://localhost:3306/repos", "root", "", p);
+        DB db = new DB("com.mysql.jdbc.Driver", "jdbc:mysql://localhost:3306/repos", "root", "Welcome@1", p);
         trans(db);
+        
     }
 
     public static void list1(DB db) throws Exception {
@@ -106,7 +107,7 @@ public class Test {
                     p.setName("sheik");
                     p.setAge(40);
                     p.setCreateTime(Calendar.getInstance().getTime());
-                    BigInteger id = db.repository(Person.class).insert(p);
+                    BigInteger id = db.insert(p);
 
                     Thread t1 = new Thread() {
                         @Override

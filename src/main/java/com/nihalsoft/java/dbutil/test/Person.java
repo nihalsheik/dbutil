@@ -5,10 +5,9 @@ import java.util.Date;
 import com.nihalsoft.java.dbutil.annotation.Column;
 import com.nihalsoft.java.dbutil.annotation.Id;
 import com.nihalsoft.java.dbutil.annotation.Table;
-import com.nihalsoft.java.dbutil.common.Entity;
 
 @Table(name = "tbl_person")
-public class Person implements Entity {
+public class Person {
 
     private Long id;
     private String name;
