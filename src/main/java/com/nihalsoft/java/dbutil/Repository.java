@@ -1,18 +1,21 @@
 package com.nihalsoft.java.dbutil;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 import org.apache.commons.dbutils.handlers.ScalarHandler;
 
-import com.nihalsoft.java.dbutil.common.ColumnInfo;
+import com.nihalsoft.java.dbutil.common.DataMap;
 import com.nihalsoft.java.dbutil.common.EntityDescriptor;
-import com.nihalsoft.java.dbutil.common.EntityUtil;
+import com.nihalsoft.java.dbutil.common.Util;
 
 public class Repository<T> {
 
+    private Logger log = Logger.getLogger(Repository.class.getName());
+
     private DB db;
     private Class<T> clazz;
+    private EntityDescriptor entityDescriptor;
 
     public Repository() {
     }
@@ -34,6 +37,11 @@ public class Repository<T> {
     public void init(DB db, Class<T> clazz) {
         this.db = db;
         this.clazz = clazz;
+        try {
+            entityDescriptor = new EntityDescriptor(clazz);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -43,12 +51,10 @@ public class Repository<T> {
      * @throws Exception
      */
     public T findOne(Object id) throws Exception {
-        EntityDescriptor ed = EntityUtil.getEntityDescriptor(clazz);
-        ColumnInfo idCol = ed.getIdColumn();
-        if (idCol == null) {
-            return null;
-        }
-        return db.queryForBean("SELECT * FROM " + ed.getTableName() + " WHERE " + idCol.getName() + "=?", clazz, id);
+        Util.throwIf(!entityDescriptor.hasId(), "There is no id column");
+        return db.queryForBean(
+                "SELECT * FROM " + entityDescriptor.getTableName() + " WHERE " + entityDescriptor.getIdColumn() + "=?",
+                clazz, id);
     }
 
     /**
@@ -57,11 +63,7 @@ public class Repository<T> {
      * @throws Exception
      */
     public List<T> findAll() throws Exception {
-        String tn = EntityUtil.getTableName(clazz);
-        if (tn.equals("")) {
-            return null;
-        }
-        return db.queryForBeanList("SELECT * FROM " + tn, clazz);
+        return db.queryForBeanList("SELECT * FROM " + entityDescriptor.getTableName(), clazz);
     }
 
     /**
@@ -72,8 +74,8 @@ public class Repository<T> {
      * @throws Exception
      */
     public List<T> find(String criteria, Object... args) throws Exception {
-        EntityDescriptor ed = EntityUtil.getEntityDescriptor(clazz);
-        return db.queryForBeanList("SELECT * FROM " + ed.getTableName() + " WHERE " + criteria, clazz, args);
+        return db.queryForBeanList("SELECT * FROM " + entityDescriptor.getTableName() + " WHERE " + criteria, clazz,
+                args);
     }
 
     /**
@@ -82,23 +84,11 @@ public class Repository<T> {
      * @return
      * @throws Exception
      */
-    public Object insert(T entity) throws Exception {
+    public <E> E insert(T entity) throws Exception {
 
-        EntityDescriptor ed = EntityUtil.getEntityDescriptor(entity);
-
-        String col = "";
-        List<Object> values = new ArrayList<Object>();
-
-        for (ColumnInfo ci : ed.getColumns()) {
-            if (!ci.isIdColumn() && ci.isInsertable()) {
-                col += "," + ci.getName() + "=?";
-                values.add(ci.getValue());
-            }
-        }
-
-        String sql = "INSERT INTO " + ed.getTableName() + " SET " + col.substring(1);
-        System.out.println(sql);
-        return db.insert(sql, new ScalarHandler<Object>(), values.toArray());
+        DataMap dm = entityDescriptor.loadValues(entity,
+                entry -> entry.getKey().isInsertable() && entry.getValue() != null);
+        return db.insert(entityDescriptor.getTableName(), dm);
     }
 
     /**
@@ -108,45 +98,31 @@ public class Repository<T> {
      * @throws Exception
      */
     public int update(T entity) throws Exception {
-        EntityDescriptor ed = EntityUtil.getEntityDescriptor(entity);
 
-        List<String> cols = new ArrayList<String>();
-        List<Object> values = new ArrayList<Object>();
+        Util.throwIf(!entityDescriptor.hasId(), "There is no id column");
 
-        String idName = "";
-        Object idValue = null;
+        DataMap dm = entityDescriptor.loadValues(entity, entry -> entry.getValue() != null);
 
-        for (ColumnInfo ci : ed.getColumns()) {
-            if (ci.isIdColumn()) {
-                idName = ci.getName();
-                idValue = ci.getValue();
-            } else if (ci.getValue() != null && !ci.getValue().toString().isEmpty()) {
-                cols.add(ci.getName() + "=?");
-                values.add(ci.getValue());
-            }
-        }
+        Object idVal = dm.get(entityDescriptor.getIdColumn());
 
-        if (idName.equals("")) {
-            return -1;
-        }
-        values.add(idValue);
+        dm.remove(entityDescriptor.getIdColumn());
 
-        String sql = "UPDATE " + ed.getTableName() + " SET " + String.join(",", cols) + " WHERE " + idName + "=?";
-        System.out.println(sql);
-        return db.update(sql, values.toArray());
+        return db.update(entityDescriptor.getTableName(), dm, entityDescriptor.getIdColumn() + "=?", idVal);
     }
 
     /**
      * 
      * @param entity
+     * @param creteria
+     * @param args
      * @return
      * @throws Exception
      */
-    public int delete(T entity) throws Exception {
-        EntityDescriptor ed = EntityUtil.getEntityDescriptor(entity);
-        String sql = "DELETE FROM " + ed.getTableName() + " WHERE " + ed.getIdColumn().getName() + "=?";
-        System.out.println(sql);
-        return db.update(sql, ed.getIdColumn().getValue());
+    public int update(T entity, String creteria, Object... args) throws Exception {
+        Util.throwIf(!entityDescriptor.hasId(), "There is no id column");
+        DataMap dm = entityDescriptor.loadValues(entity,
+                entry -> !entry.getKey().isIdColumn() && entry.getValue() != null);
+        return db.update(entityDescriptor.getTableName(), dm, creteria, args);
     }
 
     /**
@@ -156,20 +132,32 @@ public class Repository<T> {
      * @throws Exception
      */
     public int deleteById(Object id) throws Exception {
-        EntityDescriptor ed = EntityUtil.getEntityDescriptor(clazz);
-        String sql = "DELETE FROM " + ed.getTableName() + " WHERE " + ed.getIdColumn().getName() + "=?";
+        Util.throwIf(!entityDescriptor.hasId(), "There is no id column");
+        String sql = "DELETE FROM " + entityDescriptor.getTableName() + " WHERE " + entityDescriptor.getIdColumn()
+                + "=?";
         System.out.println(sql);
         return db.update(sql, id);
     }
 
+    /**
+     * 
+     * @return
+     * @throws Exception
+     */
     public int getCount() throws Exception {
-        EntityDescriptor ed = EntityUtil.getEntityDescriptor(clazz);
-        String idcol = ed.getIdColumn() == null ? "*" : ed.getIdColumn().getName();
-        String sql = "SELECT count(" + idcol + ") as total FROM " + ed.getTableName();
+        String idcol = entityDescriptor.getIdColumn() == null ? "*" : entityDescriptor.getIdColumn();
+        String sql = "SELECT count(" + idcol + ") as total FROM " + entityDescriptor.getTableName();
         System.out.println(sql);
         return db.query(sql, new ScalarHandler<Integer>());
     }
 
+    /**
+     * 
+     * @param sql
+     * @param args
+     * @return
+     * @throws Exception
+     */
     public Object getScalar(String sql, Object... args) throws Exception {
         System.out.println(sql);
         return db.query(sql, new ScalarHandler<Object>(), args);

@@ -8,43 +8,48 @@ import com.nihalsoft.java.dbutil.annotation.Table;
 import com.nihalsoft.java.dbutil.common.Entity;
 
 @Table(name = "tbl_person")
-public class Person extends Entity {
+public class Person implements Entity {
+
+    private Long id;
+    private String name;
+    private Integer age;
+    private Date createTime;
 
     @Id
     @Column
-    public long getId() {
-        return get("id");
+    public Long getId() {
+        return id;
     }
 
-    public void setId(long id) {
-        set("id", id);
+    public void setId(Long id) {
+        this.id = id;
     }
 
     @Column
     public String getName() {
-        return get("name");
+        return name;
     }
 
     public void setName(String name) {
-        set("name", name);
+        this.name = name;
     }
 
     @Column
-    public int getAge() {
-        return get("age");
+    public Integer getAge() {
+        return age;
     }
 
-    public void setAge(int age) {
-        set("age", age);
+    public void setAge(Integer age) {
+        this.age = age;
     }
 
     @Column(name = "create_time")
     public Date getCreateTime() {
-        return get("create_time");
+        return createTime;
     }
 
     public void setCreateTime(Date createTime) {
-        set("create_time", createTime);
+        this.createTime = createTime;
     }
 
 }

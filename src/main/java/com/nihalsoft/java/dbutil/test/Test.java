@@ -1,23 +1,50 @@
 package com.nihalsoft.java.dbutil.test;
 
+import java.math.BigInteger;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Properties;
-import java.util.ServiceLoader;
-
-import org.apache.commons.dbutils.PropertyHandler;
 
 import com.nihalsoft.java.dbutil.DB;
-import com.nihalsoft.java.dbutil.DbUtil;
+import com.nihalsoft.java.dbutil.Repository;
 
 public class Test {
 
     public static void main2(String[] args) throws Exception {
 
-        System.out.println("Loading...");
-        ServiceLoader<PropertyHandler> propertyHandlers = ServiceLoader.load(PropertyHandler.class);
-        for (PropertyHandler p : propertyHandlers) {
-            System.out.println(p.getClass().getName());
-        }
+//        System.out.println("Loading...");
+//        ServiceLoader<PropertyHandler> propertyHandlers = ServiceLoader.load(PropertyHandler.class);
+//        for (PropertyHandler p : propertyHandlers) {
+//            System.out.println(p.getClass().getName());
+//        }
+
+        Thread t1 = new Thread() {
+            @Override
+            public void run() {
+                try {
+                    Test2.call();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+
+        Thread t2 = new Thread() {
+            @Override
+            public void run() {
+                try {
+                    Test2.call();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+
+        t1.start();
+        t2.start();
+
     }
 
     public static void main(String[] args) throws Exception {
@@ -30,51 +57,78 @@ public class Test {
         p.put("maxStatements", 10);
         p.put("autoCommitOnClose", true);
 
-        DB db = DbUtil.configure("com.mysql.jdbc.Driver", "jdbc:mysql://localhost:3306/repos", "root", "Welcome@1", p);
+        DB db = new DB("com.mysql.jdbc.Driver", "jdbc:mysql://localhost:3306/repos", "root", "", p);
+        trans(db);
+    }
 
-//        DataMap list = db.queryForDataMap("select * from tbl_client");
-//
-//        System.out.println(list.get("email"));
-//        System.out.println("---------------------");
-//        DataMap dm = new DataMap();
-//        dm.put("name", "sheik");
-//        dm.put("email", "email-333");
-////        BigInteger iid = db.insert(dm, "tbl_client");
-//
-//        db.update(dm, "tbl_client", "id=?", 13);
+    public static void list1(DB db) throws Exception {
 
-//        Person p2 = new Person();
-//        p2.setName("sheik");
-//        p2.setAge(40);
-//        p2.setCreateTime(Calendar.getInstance().getTime());
-//        pr.insert(p2);
+        Repository<Person> pr = db.repository(Person.class);
 
-        try {
+        List<Person> p3 = pr.findAll();
 
-            PersonRepos pd = new PersonRepos(db);
-//        List<Person> p3 = pd.findAll();
-//
-//        for (Person per : p3) {
-//            System.out.println("---------------------");
-//            System.out.println(per.getId());
-//            System.out.println(per.getName());
-//            System.out.println(per.getAge());
-//            System.out.println(per.getCreateTime());
-//        }
-//
-//        p3.get(0).setName("updated");
-//        
-//        pd.update(p3.get(0));
-
-            Person per = new Person();
-            per.setId(6);
-            per.setName("khaja");
-            per.setAge(100);
-            pd.update(per);
-
-        } catch (Exception ex) {
-            ex.printStackTrace();
+        for (Person per : p3) {
+            System.out.println(String.format("%-10s - %-20s - %-10s - %-10s", per.getId(), per.getName(), per.getAge(),
+                    per.getCreateTime()));
         }
+
+        Person per2 = pr.findOne(8);
+        System.out.println(String.format("%-10s - %-20s - %-10s - %-10s", per2.getId(), per2.getName(), per2.getAge(),
+                per2.getCreateTime()));
+    }
+
+    public static void insert(PersonRepos pr) throws Exception {
+        Person p = new Person();
+        p.setName("sheik");
+        p.setAge(40);
+        p.setCreateTime(Calendar.getInstance().getTime());
+        pr.insert(p);
+    }
+
+    public static void update1(PersonRepos pr) throws Exception {
+        Person p = new Person();
+        p.setId(8L);
+        p.setName("Kavitha");
+        pr.update(p);
+
+    }
+
+    public static void trans(DB db) throws Exception {
+
+        db //
+                .trans() //
+                .withIsolation(Connection.TRANSACTION_READ_COMMITTED)//
+                .exec(() -> {
+
+                    System.out.println("test");
+
+                    Person p = new Person();
+                    p.setName("sheik");
+                    p.setAge(40);
+                    p.setCreateTime(Calendar.getInstance().getTime());
+                    BigInteger id = db.repository(Person.class).insert(p);
+
+                    Thread t1 = new Thread() {
+                        @Override
+                        public void run() {
+                            try {
+                                p.setId(id.longValue());
+                                p.setName("updated");
+                                db.repository(Person.class).update(p);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    };
+
+                    t1.start();
+
+                    p.setId(id.longValue());
+                    p.setName("updated");
+                    db.repository(Person.class).update(p);
+
+                });
+
     }
 
 }
