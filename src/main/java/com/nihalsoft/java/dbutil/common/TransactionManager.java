@@ -14,7 +14,7 @@ public class TransactionManager {
 
     private DataSource ds;
 
-    private Map<String, ConnectionHolder> conHolders = new HashMap<String, ConnectionHolder>();
+    private Map<String, ActiveConnection> conHolders = new HashMap<String, ActiveConnection>();
 
     public TransactionManager(DataSource ds) {
         this.ds = ds;
@@ -26,21 +26,32 @@ public class TransactionManager {
      * @return
      * @throws SQLException
      */
-    public Connection createConnection() throws SQLException {
+    public ActiveConnection createConnectionIfNecessary(String key) throws SQLException {
+        log.info("createConnectionIfNecessary");
+        ActiveConnection ch = this.getActiveConnection();
+        if (ch == null) {
+            log.info("There is no active connection, creating new one");
+            ch = this.createConnection(key);
+        }
+        return ch;
+    }
 
+    /**
+     * --------------------------------------------------------------------------------
+     * 
+     * @return
+     * @throws SQLException
+     */
+    public ActiveConnection createConnection(String key) throws SQLException {
+        log.info("Creating Connection : Key " + key);
         Connection conn = this.ds.getConnection();
         if (conn == null) {
             throw new SQLException("Error while creating connection");
         }
 
-        StackTraceElement[] stes = Thread.currentThread().getStackTrace();
-
-        String key = this._generateKey(Thread.currentThread().getId(), stes[3]);
-
-        log.info("Creating Connection : Key " + key);
-
-        conHolders.put(key, new ConnectionHolder(conn));
-        return conn;
+        ActiveConnection ch = new ActiveConnection(key, conn);
+        conHolders.put(key, ch);
+        return ch;
     }
 
     /**
@@ -48,7 +59,8 @@ public class TransactionManager {
      * 
      * @return
      */
-    public Connection getConnection() {
+    public ActiveConnection getActiveConnection() {
+        log.info("getActiveConnection");
 
         long tid = Thread.currentThread().getId();
         StackTraceElement[] stes = Thread.currentThread().getStackTrace();
@@ -57,10 +69,10 @@ public class TransactionManager {
         String key = "";
         for (int i = 4; i < len; i++) {
             key = this._generateKey(tid, stes[i]);
-            System.out.println("------------------------> Searching : " + key);
+            log.info(String.format("%1$" + i + "s", "-->") + " Searching : " + key);
             if (conHolders.containsKey(key)) {
-                System.out.println("Connection available with key : ---------> " + key);
-                return conHolders.get(key).getConnection();
+                log.info("Connection available with key : ---------> " + key);
+                return conHolders.get(key);
             }
         }
 
@@ -75,7 +87,7 @@ public class TransactionManager {
      * @return
      */
     private String _generateKey(long tid, StackTraceElement ste) {
-        return tid + "/" + ste.getClassName() + "/" + ste.getMethodName() + "/" + ste.getLineNumber();
+        return tid + "-" + ste.getClassName() + "-" + ste.getMethodName() + "-" + ste.getLineNumber();
     }
 
     /**

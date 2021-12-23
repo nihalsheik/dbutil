@@ -74,7 +74,7 @@ public class EntityUtil {
         EntityUtil._getInfo(entity.getClass(), entity, (ci) -> {
 
             try {
-                if (filter.test(ci)) {
+                if (filter == null || filter.test(ci)) {
                     columns.add(ci);
                 }
                 if (ci.isIdColumn()) {

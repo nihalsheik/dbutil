@@ -8,7 +8,9 @@ import java.util.List;
 import java.util.Properties;
 
 import com.nihalsoft.java.dbutil.DB;
-import com.nihalsoft.java.dbutil.Repository;
+import com.nihalsoft.java.dbutil.Dao;
+import com.nihalsoft.java.dbutil.common.Isolation;
+import com.nihalsoft.java.dbutil.common.Propagation;
 
 public class Test {
 
@@ -59,12 +61,12 @@ public class Test {
 
         DB db = new DB("com.mysql.jdbc.Driver", "jdbc:mysql://localhost:3306/repos", "root", "Welcome@1", p);
         trans(db);
-        
+
     }
 
     public static void list1(DB db) throws Exception {
 
-        Repository<Person> pr = db.repository(Person.class);
+        Dao<Person> pr = db.dao(Person.class);
 
         List<Person> p3 = pr.findAll();
 
@@ -96,39 +98,55 @@ public class Test {
 
     public static void trans(DB db) throws Exception {
 
-        db //
-                .trans() //
-                .withIsolation(Connection.TRANSACTION_READ_COMMITTED)//
-                .exec(() -> {
+        db.session(() -> {
 
-                    System.out.println("test");
+            trans2(db);
+            
+            System.out.println("test");
 
-                    Person p = new Person();
-                    p.setName("sheik");
-                    p.setAge(40);
-                    p.setCreateTime(Calendar.getInstance().getTime());
-                    BigInteger id = db.insert(p);
+            Person p = new Person();
+            p.setName("sheik");
+            p.setAge(40);
+            p.setCreateTime(Calendar.getInstance().getTime());
+            BigInteger id = db.insert(p);
 
-                    Thread t1 = new Thread() {
-                        @Override
-                        public void run() {
-                            try {
-                                p.setId(id.longValue());
-                                p.setName("updated");
-                                db.repository(Person.class).update(p);
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    };
+//                        Thread t1 = new Thread() {
+//                            @Override
+//                            public void run() {
+//                                try {
+//                                    p.setId(id.longValue());
+//                                    p.setName("updated");
+//                                    db.dao(Person.class).update(p);
+//                                } catch (Exception e) {
+//                                    e.printStackTrace();
+//                                }
+//                            }
+//                        };
+//                        t1.start();
 
-                    t1.start();
+            p.setId(id.longValue());
+            p.setName("updated");
+            db.dao(Person.class).update(p);
 
-                    p.setId(id.longValue());
-                    p.setName("updated");
-                    db.repository(Person.class).update(p);
+            List<Person> p3 = db.findAll(Person.class);
 
-                });
+            for (Person per : p3) {
+                System.out.println(String.format("%-10s - %-20s - %-10s - %-10s", per.getId(), per.getName(),
+                        per.getAge(), per.getCreateTime()));
+            }
+            db.delete(p);
+        });
+
+    }
+
+    public static void trans2(DB db) throws Exception {
+        db.session(Propagation.PROPAGATION_REQUIRES_NEW).begin(() -> {
+            Person p = new Person();
+            p.setName("sheik");
+            p.setAge(40);
+            p.setCreateTime(Calendar.getInstance().getTime());
+            BigInteger id = db.insert(p);
+        });
 
     }
 

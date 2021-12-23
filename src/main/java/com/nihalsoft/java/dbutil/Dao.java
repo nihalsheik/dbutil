@@ -2,12 +2,12 @@ package com.nihalsoft.java.dbutil;
 
 import java.util.List;
 
-public class Repository<T> {
+public class Dao<T> {
 
     private DB db;
     private Class<T> clazz;
 
-    public Repository(Class<T> clazz) {
+    public Dao(Class<T> clazz) {
         this.clazz = clazz;
     }
 
@@ -16,7 +16,7 @@ public class Repository<T> {
      * @param db
      * @param clazz
      */
-    public Repository<T> init(DB db) {
+    public Dao<T> setDB(DB db) {
         this.db = db;
         return this;
     }
@@ -90,7 +90,17 @@ public class Repository<T> {
      * @throws Exception
      */
     public int deleteById(Object id) throws Exception {
-        return db.deleteById(clazz, id);
+        return db.delete(clazz, id);
+    }
+
+    /**
+     * 
+     * @param entity
+     * @return
+     * @throws Exception
+     */
+    public int delete(Object entity) throws Exception {
+        return db.delete(entity);
     }
 
     /**

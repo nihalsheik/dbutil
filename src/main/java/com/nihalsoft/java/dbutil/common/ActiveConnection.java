@@ -2,14 +2,22 @@ package com.nihalsoft.java.dbutil.common;
 
 import java.sql.Connection;
 
-public class ConnectionHolder {
+public class ActiveConnection {
 
+    private String sessionId;
+    
     private Connection connection;
+    
     private long ts;
 
-    public ConnectionHolder(Connection connection) {
+    public ActiveConnection(String sessionId, Connection connection) {
+        this.sessionId = sessionId;
         this.connection = connection;
         this.ts = System.currentTimeMillis();
+    }
+
+    public String getSessionId() {
+        return sessionId;
     }
 
     public Connection getConnection() {
@@ -20,4 +28,7 @@ public class ConnectionHolder {
         return ts;
     }
 
+    public boolean ownerOf(String sessionId) {
+        return this.sessionId.equals(sessionId);
+    }
 }

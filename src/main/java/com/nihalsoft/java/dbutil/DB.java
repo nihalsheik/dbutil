@@ -25,11 +25,15 @@ import org.apache.commons.dbutils.handlers.ScalarHandler;
 
 import com.mchange.v2.c3p0.DataSources;
 import com.nihalsoft.java.dbutil.common.ColumnInfo;
+import com.nihalsoft.java.dbutil.common.ActiveConnection;
 import com.nihalsoft.java.dbutil.common.DataMap;
 import com.nihalsoft.java.dbutil.common.EntityDescriptor;
 import com.nihalsoft.java.dbutil.common.EntityUtil;
-import com.nihalsoft.java.dbutil.common.Transaction;
+import com.nihalsoft.java.dbutil.common.Isolation;
+import com.nihalsoft.java.dbutil.common.Propagation;
+import com.nihalsoft.java.dbutil.common.Session;
 import com.nihalsoft.java.dbutil.common.TransactionManager;
+import com.nihalsoft.java.dbutil.common.TxConsumer;
 import com.nihalsoft.java.dbutil.common.Util;
 import com.nihalsoft.java.dbutil.result.BeanProcessorEx;
 import com.nihalsoft.java.dbutil.result.handler.DataMapHandler;
@@ -37,11 +41,11 @@ import com.nihalsoft.java.dbutil.result.handler.DataMapListHandler;
 
 public class DB {
 
-    private static final Logger log = Logger.getLogger(DB.class.getName());;
+    private static final Logger log = Logger.getLogger(DB.class.getName());
 
     private QueryRunner qr;
     private RowProcessor rowProcessor;
-    private TransactionManager tm;
+    private TransactionManager txManager;
 
     static {
         System.setProperty("java.util.logging.SimpleFormatter.format", "[%1$tF %1$tT] [%4$-7s] %5$s %n");
@@ -64,7 +68,7 @@ public class DB {
             for (Object key : prop.keySet()) {
                 prop.put(key, prop.get(key).toString());
             }
-            prop.forEach((k, v) -> System.out.println(" --> " + k + " = " + v));
+            prop.forEach((k, v) -> log.info(" --> " + k + " = " + v));
             _init(DataSources.pooledDataSource(uds, prop));
         } else {
             _init(DataSources.pooledDataSource(uds));
@@ -79,7 +83,7 @@ public class DB {
     private void _init(DataSource ds) {
 
         qr = new QueryRunner(ds);
-        tm = new TransactionManager(ds);
+        txManager = new TransactionManager(ds);
         rowProcessor = new BasicRowProcessor(new BeanProcessorEx());
     }
 
@@ -106,7 +110,10 @@ public class DB {
     }
 
     public <T> T query(String sql, ResultSetHandler<T> handler, Object... params) throws SQLException {
-        return qr.query(sql, handler, params);
+        ActiveConnection conn = txManager.getActiveConnection();
+        return conn != null //
+                ? qr.query(conn.getConnection(), sql, handler, params) //
+                : qr.query(sql, handler, params);
     }
 
     /**
@@ -117,7 +124,7 @@ public class DB {
      * @throws Exception
      */
     public List<Object[]> queryForList(String sql, Object... args) throws Exception {
-        return qr.query(sql, new ArrayListHandler(), args);
+        return this.query(sql, new ArrayListHandler(), args);
     }
 
     /**
@@ -128,7 +135,7 @@ public class DB {
      * @throws Exception
      */
     public Object[] queryForObject(String sql, Object... args) throws Exception {
-        return qr.query(sql, new ArrayHandler(), args);
+        return this.query(sql, new ArrayHandler(), args);
     }
 
     /**
@@ -139,7 +146,7 @@ public class DB {
      * @throws Exception
      */
     public List<DataMap> queryForDataMapList(String sql, Object... args) throws Exception {
-        return qr.query(sql, new DataMapListHandler(), args);
+        return this.query(sql, new DataMapListHandler(), args);
     }
 
     /**
@@ -150,7 +157,7 @@ public class DB {
      * @throws Exception
      */
     public DataMap queryForDataMap(String sql, Object... args) throws Exception {
-        return qr.query(sql, new DataMapHandler(), args);
+        return this.query(sql, new DataMapHandler(), args);
     }
 
     /**
@@ -163,7 +170,7 @@ public class DB {
      * @throws Exception
      */
     public <T> T queryForBean(String sql, Class<? extends T> clazz, Object... args) throws SQLException {
-        return qr.query(sql, new BeanHandler<T>(clazz, rowProcessor), args);
+        return this.query(sql, new BeanHandler<T>(clazz, rowProcessor), args);
     }
 
     /**
@@ -176,7 +183,7 @@ public class DB {
      * @throws Exception
      */
     public <T> List<T> queryForBeanList(String sql, Class<? extends T> type, Object... args) throws SQLException {
-        return qr.query(sql, new BeanListHandler<T>(type, rowProcessor), args);
+        return this.query(sql, new BeanListHandler<T>(type, rowProcessor), args);
     }
 
     /**
@@ -189,7 +196,7 @@ public class DB {
      * @throws SQLException
      */
     public <T> T queryForObject(String sql, Class<T> type, Object... args) throws SQLException {
-        return qr.query(sql, new ScalarHandler<T>(), args);
+        return this.query(sql, new ScalarHandler<T>(), args);
     }
 
     /**
@@ -202,7 +209,7 @@ public class DB {
      */
     public int delete(String tableName, String criteria, Object... args) throws Exception {
         String sql = "DELETE FROM " + tableName + " WHERE " + criteria;
-        System.out.println(sql);
+        log.info(sql);
         return this.update(sql, args);
     }
 
@@ -226,15 +233,23 @@ public class DB {
         }
 
         String sql = "INSERT INTO " + tableName + " SET " + col.substring(1);
-        System.out.println(sql);
+        log.info(sql);
 
         return this.insert(sql, values);
     }
 
+    /**
+     * 
+     * @param <T>
+     * @param sql
+     * @param values
+     * @return
+     * @throws SQLException
+     */
     public <T> T insert(String sql, Object... values) throws SQLException {
-        Connection conn = tm.getConnection();
+        ActiveConnection conn = txManager.getActiveConnection();
         return (conn != null) //
-                ? qr.insert(conn, sql, new ScalarHandler<T>(), values) //
+                ? qr.insert(conn.getConnection(), sql, new ScalarHandler<T>(), values) //
                 : qr.insert(sql, new ScalarHandler<T>(), values);
     }
 
@@ -264,17 +279,202 @@ public class DB {
         }
 
         String sql = "UPDATE " + tableName + " SET " + col.substring(1) + " WHERE " + criteria;
-        System.out.println(sql);
+        log.info(sql);
         return this.update(sql, values);
     }
 
     /**
      * 
-     * @param ed
-     * @param criteria
+     * @param sql
      * @param params
      * @return
+     * @throws SQLException
+     */
+    public int update(String sql, Object... params) throws SQLException {
+        ActiveConnection conn = txManager.getActiveConnection();
+        return (conn != null) ? qr.update(conn.getConnection(), sql, params) : qr.update(sql, params);
+    }
+
+    /**
+     * 
+     * @param <T>
+     * @param sql
+     * @param rsh
+     * @param params
+     * @return
+     * @throws SQLException
+     */
+    public <T> T insertBatch(String sql, ResultSetHandler<T> rsh, Object[][] params) throws SQLException {
+        return qr.insertBatch(sql, rsh, params);
+    }
+
+    public void session(TxConsumer txc) throws Exception {
+        new Session(txManager).begin(txc);
+    }
+
+    public Session session(Propagation propgation) throws Exception {
+        return new Session(txManager).propagation(propgation);
+    }
+
+    public Session session(Propagation propgation, Isolation isolation) throws Exception {
+        return new Session(txManager).propagation(propgation).isolation(isolation);
+    }
+
+    /**
+     * 
+     * @param <T>
+     * @param clazz
+     * @return
+     */
+    public <T> Dao<T> dao(Class<T> clazz) {
+        return new Dao<T>(clazz).setDB(this);
+    }
+
+    /**
+     * 
+     * @param sql
+     * @param args
+     * @return
      * @throws Exception
+     */
+    public <T> T getScalar(String sql, Object... args) throws Exception {
+        log.info(sql);
+        return this.query(sql, new ScalarHandler<T>(), args);
+    }
+
+    /**
+     * 
+     * @param <T>
+     * @param clazz
+     * @param id
+     * @return
+     * @throws Exception
+     */
+    public <T> T findOne(Class<T> clazz, Object id) throws Exception {
+        EntityDescriptor ed = EntityUtil.getDescriptor(clazz);
+        Util.throwSqlException(!ed.hasId(), "There is no id column");
+        return this.queryForBean("SELECT * FROM " + ed.getTableName() + " WHERE " + ed.getIdColumn() + "=?", clazz, id);
+    }
+
+    /**
+     * 
+     * @param <T>
+     * @param clazz
+     * @return
+     * @throws Exception
+     */
+    public <T> List<T> findAll(Class<T> clazz) throws Exception {
+        return this.queryForBeanList("SELECT * FROM " + EntityUtil.getTableName(clazz), clazz);
+    }
+
+    /**
+     * 
+     * @param <T>
+     * @param clazz
+     * @param criteria
+     * @param args
+     * @return
+     * @throws Exception
+     */
+    public <T> List<T> find(Class<T> clazz, String criteria, Object... args) throws Exception {
+        return this.queryForBeanList("SELECT * FROM " + EntityUtil.getTableName(clazz) + " WHERE " + criteria, clazz,
+                args);
+    }
+
+    public <E> E insert(Object entity) throws Exception {
+        log.info("Inserting entity ");
+        EntityDescriptor ed = EntityUtil.getDescriptor(entity, colInfo -> colInfo.isInsertable() && colInfo.hasValue());
+        return _insert(ed);
+    }
+
+    /**
+     * 
+     * @param entity
+     * @return
+     * @throws Exception
+     */
+    public int update(Object entity) throws Exception {
+
+        EntityDescriptor ed = EntityUtil.getDescriptor(entity, colInfo -> colInfo.isInsertable() && colInfo.hasValue());
+
+        Util.throwIf(!ed.hasId(), "There is no id column");
+
+        return _update(ed, ed.getIdColumn().getName() + "=?", ed.getIdColumn().getValue());
+    }
+
+    /**
+     * 
+     * @param entity
+     * @param creteria
+     * @param args
+     * @return
+     * @throws Exception
+     */
+    public int update(Object entity, String creteria, Object... args) throws Exception {
+        EntityDescriptor ed = EntityUtil.getDescriptor(entity, colInfo -> colInfo.isInsertable() && colInfo.hasValue());
+        return _update(ed, creteria, args);
+    }
+
+    /**
+     * 
+     * @param clazz
+     * @param id
+     * @return
+     * @throws Exception
+     */
+    public int delete(Class<?> clazz, Object id) throws Exception {
+        EntityDescriptor ed = EntityUtil.getDescriptor(clazz);
+        Util.throwIf(!ed.hasId(), "There is no id column");
+        String sql = "DELETE FROM " + ed.getTableName() + " WHERE " + ed.getIdColumn().getName() + "=?";
+        log.info(sql);
+        return this.update(sql, id);
+    }
+
+    /**
+     * 
+     * @param entity
+     * @return
+     * @throws Exception
+     */
+    public int delete(Object entity) throws Exception {
+        EntityDescriptor ed = EntityUtil.getDescriptor(entity, null);
+        Util.throwIf(!ed.hasId(), "There is no id column");
+        String sql = "DELETE FROM " + ed.getTableName() + " WHERE " + ed.getIdColumn().getName() + "=?";
+        log.info(sql);
+        return this.update(sql, ed.getIdColumn().getValue());
+    }
+
+    /**
+     * 
+     * @param entity
+     * @param criteria
+     * @param args
+     * @return
+     * @throws Exception
+     */
+    public int delete(Object entity, String criteria, Object... args) throws Exception {
+        EntityDescriptor ed = EntityUtil.getDescriptor(entity.getClass());
+        String sql = "DELETE FROM " + ed.getTableName() + " WHERE " + criteria;
+        log.info(sql);
+        return this.update(sql, args);
+    }
+
+    /**
+     * 
+     * @param clazz
+     * @return
+     * @throws Exception
+     */
+    public long getCount(Class<?> clazz) throws Exception {
+        EntityDescriptor ed = EntityUtil.getDescriptor(clazz);
+        String idcol = ed.getIdColumn() == null ? "*" : ed.getIdColumn().getName();
+        String sql = "SELECT count(" + idcol + ") as total FROM " + ed.getTableName();
+        log.info(sql);
+        return this.query(sql, new ScalarHandler<Long>());
+    }
+
+    /**
+     * ------------------- PRIVATE METHODS -------------------
      */
     private int _update(EntityDescriptor ed, String criteria, Object... params) throws Exception {
 
@@ -292,7 +492,7 @@ public class DB {
         }
 
         String sql = "UPDATE " + ed.getTableName() + " SET " + col.substring(1) + " WHERE " + criteria;
-        System.out.println(sql);
+        log.info(sql);
         return this.update(sql, values);
     }
 
@@ -308,87 +508,7 @@ public class DB {
         }
 
         String sql = "INSERT INTO " + ed.getTableName() + " SET " + col.substring(1);
-        System.out.println(sql);
+        log.info(sql);
         return this.insert(sql, values);
-    }
-
-    public int update(String sql, Object... params) throws SQLException {
-        Connection conn = tm.getConnection();
-        return (conn != null) ? qr.update(conn, sql, params) : qr.update(sql, params);
-    }
-
-    public <T> T insertBatch(String sql, ResultSetHandler<T> rsh, Object[][] params) throws SQLException {
-        return qr.insertBatch(sql, rsh, params);
-    }
-
-    public Transaction trans() throws Exception {
-        return new Transaction(tm);
-    }
-
-    public <T> Repository<T> repository(Class<T> clazz) {
-        return new Repository<T>(clazz).init(this);
-    }
-
-    /**
-     * 
-     * @param sql
-     * @param args
-     * @return
-     * @throws Exception
-     */
-    public <T> T getScalar(String sql, Object... args) throws Exception {
-        System.out.println(sql);
-        return this.query(sql, new ScalarHandler<T>(), args);
-    }
-
-    public <T> T findOne(Class<T> clazz, Object id) throws Exception {
-        EntityDescriptor ed = EntityUtil.getDescriptor(clazz);
-        Util.throwSqlException(!ed.hasId(), "There is no id column");
-        return this.queryForBean("SELECT * FROM " + ed.getTableName() + " WHERE " + ed.getIdColumn() + "=?", clazz, id);
-    }
-
-    public <T> List<T> findAll(Class<T> clazz) throws Exception {
-        return this.queryForBeanList("SELECT * FROM " + EntityUtil.getTableName(clazz), clazz);
-    }
-
-    public <T> List<T> find(Class<T> clazz, String criteria, Object... args) throws Exception {
-        return this.queryForBeanList("SELECT * FROM " + EntityUtil.getTableName(clazz) + " WHERE " + criteria, clazz,
-                args);
-    }
-
-    public <E> E insert(Object entity) throws Exception {
-        log.info("Inserting entity ");
-        EntityDescriptor ed = EntityUtil.getDescriptor(entity, colInfo -> colInfo.isInsertable() && colInfo.hasValue());
-        return _insert(ed);
-    }
-
-    public int update(Object entity) throws Exception {
-
-        EntityDescriptor ed = EntityUtil.getDescriptor(entity, colInfo -> colInfo.isInsertable() && colInfo.hasValue());
-
-        Util.throwIf(!ed.hasId(), "There is no id column");
-
-        return _update(ed, ed.getIdColumn().getName() + "=?", ed.getIdColumn().getValue());
-    }
-
-    public int update(Object entity, String creteria, Object... args) throws Exception {
-        EntityDescriptor ed = EntityUtil.getDescriptor(entity, colInfo -> colInfo.isInsertable() && colInfo.hasValue());
-        return _update(ed, creteria, args);
-    }
-
-    public int deleteById(Class<?> clazz, Object id) throws Exception {
-        EntityDescriptor ed = EntityUtil.getDescriptor(clazz);
-        Util.throwIf(!ed.hasId(), "There is no id column");
-        String sql = "DELETE FROM " + ed.getTableName() + " WHERE " + ed.getIdColumn().getName() + "=?";
-        System.out.println(sql);
-        return this.update(sql, id);
-    }
-
-    public long getCount(Class<?> clazz) throws Exception {
-        EntityDescriptor ed = EntityUtil.getDescriptor(clazz);
-        String idcol = ed.getIdColumn() == null ? "*" : ed.getIdColumn().getName();
-        String sql = "SELECT count(" + idcol + ") as total FROM " + ed.getTableName();
-        System.out.println(sql);
-        return this.query(sql, new ScalarHandler<Long>());
     }
 }
