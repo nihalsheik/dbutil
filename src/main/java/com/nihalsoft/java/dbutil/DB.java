@@ -1,9 +1,11 @@
 package com.nihalsoft.java.dbutil;
 
+import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -24,16 +26,15 @@ import org.apache.commons.dbutils.handlers.BeanListHandler;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
 
 import com.mchange.v2.c3p0.DataSources;
+import com.nihalsoft.java.dbutil.annotation.Transactional;
 import com.nihalsoft.java.dbutil.common.ColumnInfo;
-import com.nihalsoft.java.dbutil.common.ActiveConnection;
 import com.nihalsoft.java.dbutil.common.DataMap;
 import com.nihalsoft.java.dbutil.common.EntityDescriptor;
 import com.nihalsoft.java.dbutil.common.EntityUtil;
-import com.nihalsoft.java.dbutil.common.Isolation;
-import com.nihalsoft.java.dbutil.common.Propagation;
+import com.nihalsoft.java.dbutil.common.Reflection;
 import com.nihalsoft.java.dbutil.common.Session;
-import com.nihalsoft.java.dbutil.common.TransactionManager;
-import com.nihalsoft.java.dbutil.common.TxConsumer;
+import com.nihalsoft.java.dbutil.common.SessionConsumer;
+import com.nihalsoft.java.dbutil.common.SessionFactory;
 import com.nihalsoft.java.dbutil.common.Util;
 import com.nihalsoft.java.dbutil.result.BeanProcessorEx;
 import com.nihalsoft.java.dbutil.result.handler.DataMapHandler;
@@ -44,8 +45,10 @@ public class DB {
     private static final Logger log = Logger.getLogger(DB.class.getName());
 
     private QueryRunner qr;
+
     private RowProcessor rowProcessor;
-    private TransactionManager txManager;
+
+    private SessionFactory sf;
 
     static {
         System.setProperty("java.util.logging.SimpleFormatter.format", "[%1$tF %1$tT] [%4$-7s] %5$s %n");
@@ -76,15 +79,29 @@ public class DB {
 
     }
 
+    public DB() {
+    }
+    
     public DB(DataSource ds) {
         this._init(ds);
     }
 
     private void _init(DataSource ds) {
-
         qr = new QueryRunner(ds);
-        txManager = new TransactionManager(ds);
         rowProcessor = new BasicRowProcessor(new BeanProcessorEx());
+        sf = new SessionFactory(this);
+    }
+
+    public DataSource getDataSource() {
+        return qr.getDataSource();
+    }
+
+    public QueryRunner getQueryRunner() {
+        return qr;
+    }
+
+    public void packgeForScan(String pkg) throws Exception {
+        sf.scan(pkg);
     }
 
     /**
@@ -110,10 +127,7 @@ public class DB {
     }
 
     public <T> T query(String sql, ResultSetHandler<T> handler, Object... params) throws SQLException {
-        ActiveConnection conn = txManager.getActiveConnection();
-        return conn != null //
-                ? qr.query(conn.getConnection(), sql, handler, params) //
-                : qr.query(sql, handler, params);
+        return qr.query(sql, handler, params);
     }
 
     /**
@@ -247,10 +261,12 @@ public class DB {
      * @throws SQLException
      */
     public <T> T insert(String sql, Object... values) throws SQLException {
-        ActiveConnection conn = txManager.getActiveConnection();
-        return (conn != null) //
-                ? qr.insert(conn.getConnection(), sql, new ScalarHandler<T>(), values) //
-                : qr.insert(sql, new ScalarHandler<T>(), values);
+        Session sess = this.sf.currentSession();
+        if (sess != null) {
+            return qr.insert(sess.getConnection(), sql, new ScalarHandler<T>(), values);
+        } else {
+            return qr.insert(sql, new ScalarHandler<T>(), values);
+        }
     }
 
     /**
@@ -291,8 +307,12 @@ public class DB {
      * @throws SQLException
      */
     public int update(String sql, Object... params) throws SQLException {
-        ActiveConnection conn = txManager.getActiveConnection();
-        return (conn != null) ? qr.update(conn.getConnection(), sql, params) : qr.update(sql, params);
+        Session sess = this.sf.currentSession();
+        if (sess != null) {
+            return qr.update(sess.getConnection(), sql, params);
+        } else {
+            return qr.update(sql, params);
+        }
     }
 
     /**
@@ -308,16 +328,8 @@ public class DB {
         return qr.insertBatch(sql, rsh, params);
     }
 
-    public void session(TxConsumer txc) throws Exception {
-        new Session(txManager).begin(txc);
-    }
-
-    public Session session(Propagation propgation) throws Exception {
-        return new Session(txManager).propagation(propgation);
-    }
-
-    public Session session(Propagation propgation, Isolation isolation) throws Exception {
-        return new Session(txManager).propagation(propgation).isolation(isolation);
+    public void session(SessionConsumer sessionConsumer) throws Exception {
+        sf.createSession(sessionConsumer);
     }
 
     /**
